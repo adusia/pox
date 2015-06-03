@@ -3,10 +3,10 @@
 #Constraint: For a graph with max depth X, include probes with length <= 2*X
 #Constraint: Edges and Nodes cannot be repeated
 #Constraint: Symmetric probes are not added
+*Iterative BFS is used to search the graph for paths
 *This probes may not be able to uniquely identify all possible faults
 *So using the undecomposed set, extra probes (non-cyclic) are added to the probe set
 until all faults can be uniquely identified
-*Iterative BFS method is used
 '''
 
 import math
@@ -68,14 +68,14 @@ class AllPaths:
     
    
   def compute_dependency_Matrix(self,currnode):
-    self.iterDFS(currnode,currnode)
+    self.iterBFS(currnode,currnode)
     '''
     for endnode in range(0,self.num_of_nodes):    
       self.iterDFS(currnode,endnode)'''
     
     return self.DependencyMatrix
     
-  def iterDFS(self, currnode, endnode): 
+  def iterBFS(self, currnode, endnode): 
     #print "endnode=%s" % endnode
     startnode = self.Node(currnode, str(currnode))
     #stack = []
@@ -87,7 +87,7 @@ class AllPaths:
     nodeDegree = {}      
     for n in range(0,self.num_of_nodes):
       distToEndnode[n] = nx.shortest_path_length(self.G,n,endnode)      
-      nodeDegree[n] = self.G.degree(n)
+      #nodeDegree[n] = self.G.degree(n)
     MaxDepth = max(distToEndnode.itervalues())
     #print distToEndnode
     print "MaxDepth = %d" % MaxDepth
@@ -110,11 +110,12 @@ class AllPaths:
               self.AllProbes.append(map(int, probe + [str(self.probeno)]))
               self.probeno += 1
               self.ProbeCount[endnode] += 1
-              for n in top.parents.split("-"):
+              
+              '''for n in top.parents.split("-"):
                 if int(n) in nodeDegree:
                   nodeDegree[int(n)] -= 1
                   if nodeDegree[int(n)] == 0:
-                    del nodeDegree[int(n)]
+                    del nodeDegree[int(n)]'''
                     
               #print "Probe=%s" % str(probe)
             '''
@@ -313,7 +314,7 @@ class AllPaths:
         
 
 
-for j in range(10,101,10):
+for j in range(10,11,10):
 
   Topo = []
   G = nx.Graph()

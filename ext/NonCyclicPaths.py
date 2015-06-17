@@ -23,13 +23,10 @@ import os
 class AllPaths: 
   
   def __init__(self, Graph):
-    #self.Topology = Topology
-    #self.num_of_nodes = len(self.Topology) 
     self.num_of_nodes = Graph.number_of_nodes()    
     self.G = Graph    
     self.DependencyMatrix = []
     self.AllProbes = []   
-    #print nx.shortest_path_length(self.G,0,4)
     self.probeno = 0
     self.Node = collections.namedtuple('Node', 'NodeNum, parents')
     
@@ -306,15 +303,12 @@ with open(filename,'a') as fR:
 for nodes in range(10,11,10):
   for j in range(0,1):
 
-    #Topo = []
     G = nx.Graph()
     #labels = {}
     ResultRow = []
     ResultRow.append(nodes)
     
     for x in range(0,nodes):
-      #Topo.append([])
-      #Topo[x].extend([0]*nodes)
       G.add_node(x)
       #labels[x]='$'+str(x)+'$'
   
@@ -322,8 +316,6 @@ for nodes in range(10,11,10):
     mat = np.loadtxt("Topologies/Node"+str(nodes)+"/out"+str(nodes)+"-"+str(j)+".txt",delimiter="\t")
   
     for i in mat:
-      #Topo[int(i[0])][int(i[1])] = 1
-      #Topo[int(i[1])][int(i[0])] = 1
       G.add_edges_from([(int(i[0]),int(i[1])), (int(i[1]),int(i[0]))])  
 
     mat = None    

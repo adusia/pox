@@ -1,6 +1,6 @@
 '''
-*This approach finds the cyclic path probes from source node to source node with a constraint*
-#Constraint: To find probes to a particular node, consider only those probes which have the same shortest length
+*This approach finds the non-cyclic probes from source node to all nodes with a constraint*
+#Constraint: To find probes to a particular node, consider only those probes which have the shortest length
 from source to that node
 #Constraint: Edges and Nodes cannot be repeated
 #Constraint: Symmetric probes are not added
@@ -17,39 +17,27 @@ from dijkstras import Graph
 from collections import deque
 from termcolor import colored
 import copy
+import timeit
+import os
 
-class AllPaths:
-
-  Topology = []
+class AllPaths: 
   
-  num_of_nodes = 0
- 
-  DependencyMatrix = []
-
-  AllProbes = []
-  
-  ProbeSet = []
-  
-  DecompositionSet = []
-  
-  probeno = 0
-  
-  NumberOfProbesSelected = 0
-  
-  Node = collections.namedtuple('Node', 'NodeNum, parents')
-  
-  G = nx.Graph()
-  
-  ProbeCount = {}
-  
-  def __init__(self, Topology, Graph):
-    self.Topology = Topology
-    self.num_of_nodes = len(self.Topology)    
+  def __init__(self, Graph):
+    #self.Topology = Topology
+    #self.num_of_nodes = len(self.Topology) 
+    self.num_of_nodes = Graph.number_of_nodes()    
     self.G = Graph    
     self.DependencyMatrix = []
     self.AllProbes = []   
     #print nx.shortest_path_length(self.G,0,4)
     self.probeno = 0
+    self.Node = collections.namedtuple('Node', 'NodeNum, parents')
+    
+    distToEndnode = {}
+    for n in range(0,self.num_of_nodes):
+      distToEndnode[n] = nx.shortest_path_length(self.G,0,n)
+    self.Maxdepth = max(distToEndnode.itervalues())
+    #print self.Maxdepth    
     self.initialization()
       
   def initialization(self):
@@ -58,12 +46,10 @@ class AllPaths:
     self.NumberOfProbesSelected = 0
     self.DecompositionSet = []
     self.DecompositionSet.append([])
-    for x in range(0,self.num_of_nodes):      
+    for x in range(1,self.num_of_nodes):      
       self.DecompositionSet[0].append(x)
-      self.ProbeCount[x] = 0
       
     self.DecompositionSet[0].append(self.num_of_nodes)    
-    
    
   def compute_dependency_Matrix(self,currnode):
     #self.iterBFS(currnode,currnode)    
@@ -84,8 +70,8 @@ class AllPaths:
     nodeDegree = {}      
     for n in range(0,self.num_of_nodes):
       distToEndnode[n] = nx.shortest_path_length(self.G,n,endnode)      
-      #nodeDegree[n] = self.G.degree(n)
-    #MaxDepth = max(distToEndnode.itervalues())
+      nodeDegree[n] = self.G.degree(n)
+    MaxDepth = max(distToEndnode.itervalues())
     #print distToEndnode
     #print "MaxDepth = %d" % MaxDepth
     
@@ -93,10 +79,11 @@ class AllPaths:
       #d += 1
       top = stack.popleft()      
       #top = stack.pop()      
-      nbrs = [i for i,x in enumerate(self.Topology[top.NodeNum]) if x == 1]
+      #nbrs = [i for i,x in enumerate(self.Topology[top.NodeNum]) if x == 1]
+      nbrs = self.G.neighbors(top.NodeNum)
       for nbr in nbrs:        
         #if str(top.NodeNum)+"-"+str(nbr) not in top.parents and str(nbr)+"-"+str(top.NodeNum) not in top.parents:
-        if str(nbr) not in top.parents or (nbr == currnode and str(top.NodeNum)+"-"+str(nbr) not in top.parents and str(nbr)+"-"+str(top.NodeNum) not in top.parents):
+        if str(nbr) not in top.parents.split("-") or (nbr == currnode and str(top.NodeNum)+"-"+str(nbr) not in top.parents and str(nbr)+"-"+str(top.NodeNum) not in top.parents):
           if nbr == endnode:
             probe = top.parents.split("-") + [str(nbr)]# + [str(self.probeno)]   
             DependencyMatrixRow = [0]*(self.num_of_nodes + 1)
@@ -106,7 +93,6 @@ class AllPaths:
               self.DependencyMatrix.append(DependencyMatrixRow)
               self.AllProbes.append(map(int, probe + [str(self.probeno)]))
               self.probeno += 1
-              self.ProbeCount[endnode] += 1
               
               '''for n in top.parents.split("-"):
                 if int(n) in nodeDegree:
@@ -120,10 +106,10 @@ class AllPaths:
             self.AllProbes.append(map(int, probe + [str(self.probeno)]))
             self.probeno += 1'''
           else:
-            if len((top.parents+"-"+str(nbr)).split("-")) <= distToEndnode[currnode]:          
-            #if len((top.parents+"-"+str(nbr)).split("-")) <= MaxDepth*2:
-            #if int(nbr) in nodeDegree:
-            #if len(nodeDegree) > 0:           
+            #if len((top.parents+"-"+str(nbr)).split("-")) <= distToEndnode[currnode]: #shortest length probe
+            #if len((top.parents+"-"+str(nbr)).split("-")) <= self.Maxdepth: #maxdepth of the graph 
+            if len((top.parents+"-"+str(nbr)).split("-")) <= MaxDepth: #maxDepth of the node
+            #if len((top.parents+"-"+str(nbr)).split("-")) <= self.num_of_nodes:
               stack.append(self.Node(nbr, top.parents+"-"+str(nbr)))
       #print stack
       #print nodeDegree
@@ -169,7 +155,7 @@ class AllPaths:
         for s in DecomposedSet:      
           self.DecompositionSet.append(s)  
       
-      if len(self.DecompositionSet) == (self.num_of_nodes + 1):        
+      if len(self.DecompositionSet) == (self.num_of_nodes):        
         self.NumberOfProbesSelected = len(self.ProbeSet)
         candidate_set = None
         DM = None        
@@ -254,7 +240,7 @@ class AllPaths:
       minProbeLen = 9999
       ProbeLen = -1      
       
-      if len(self.DecompositionSet) == (self.num_of_nodes + 1):
+      if len(self.DecompositionSet) == (self.num_of_nodes):
         self.NumberOfProbesSelected = len(self.ProbeSet)
         return 
       for probe in candidate_set:
@@ -310,95 +296,95 @@ class AllPaths:
        
         print "New Candidate Set=%s" % str(candidate_set)
         
+#filename = "Topologies/Node"+str(nodes)+"/result-GraphDepth"+str(nodes)+".txt"
+filename = "Topologies/Result-NodeDepth.txt"
+if os.path.exists(filename):
+  os.remove(filename)
+with open(filename,'a') as fR:
+  fR.write("Nodes\t"+"AvgDeg\t"+"TotPrbs\t"+"MaxDepth\t"+"PCExecTime\t"+"No.ofPrbs\t"+"TotLenOfPrbs\t"+"PEExecTime\t"+"No.ofPrbs\t"+"TotLenOfPrbs\n")
+        
+for nodes in range(10,11,10):
+  for j in range(0,1):
 
-
-for j in range(10,101,10):
-
-  Topo = []
-  G = nx.Graph()
-  #labels = {}
-
-  nodes=j
-  for x in range(0,nodes):
-    Topo.append([])
-    Topo[x].extend([0]*nodes)
-    G.add_node(x)
-    #labels[x]='$'+str(x)+'$'
+    #Topo = []
+    G = nx.Graph()
+    #labels = {}
+    ResultRow = []
+    ResultRow.append(nodes)
+    
+    for x in range(0,nodes):
+      #Topo.append([])
+      #Topo[x].extend([0]*nodes)
+      G.add_node(x)
+      #labels[x]='$'+str(x)+'$'
   
-  print colored("Number of nodes = %d" % nodes,'red')
-  mat = np.loadtxt("Topologies/"+str(nodes)+"-3.txt",delimiter="\t")
+    #print colored("Number of nodes = %d" % nodes,'red')
+    mat = np.loadtxt("Topologies/Node"+str(nodes)+"/out"+str(nodes)+"-"+str(j)+".txt",delimiter="\t")
   
-  for i in mat:
-    Topo[int(i[0])][int(i[1])] = 1
-    Topo[int(i[1])][int(i[0])] = 1
-    G.add_edges_from([(int(i[0]),int(i[1])), (int(i[1]),int(i[0]))])  
+    for i in mat:
+      #Topo[int(i[0])][int(i[1])] = 1
+      #Topo[int(i[1])][int(i[0])] = 1
+      G.add_edges_from([(int(i[0]),int(i[1])), (int(i[1]),int(i[0]))])  
 
-  mat = None  
+    mat = None    
 
+    obj = AllPaths(G)
+    startnode = 0
+
+    obj.compute_dependency_Matrix(startnode)
+ 
   
-  '''
-  for x in range(0,6):
-    Topo.append([])
-    G.add_node(x)
-  Topo[0].extend([0,1,0,1,0,1])
-  Topo[1].extend([1,0,1,0,0,0])
-  Topo[2].extend([0,1,0,1,0,0])
-  Topo[3].extend([1,0,1,0,1,1])
-  Topo[4].extend([0,0,0,1,0,1])
-  Topo[5].extend([1,0,0,1,1,0])
-  for row in range(0,6):
-    for col in range(0,6):
-      if Topo[row][col] == 1:
-        G.add_edge(row,col)
-  #print G.edges()
-  '''
-
-  obj = AllPaths(Topo, G)
-  startnode = 0
-
-  obj.compute_dependency_Matrix(startnode)
-  #for row in obj.compute_dependency_Matrix(startnode):
-  #  print row #+ [row.count(1)]
-
-  #for probe in obj.AllProbes:
-  #  print probe[:-1]
-
-  #print "All Probes=" + str(obj.AllProbes)
-  print colored("Total Probes = %s" % len(obj.AllProbes),'red')
-  print "----------------------------------------------------------------------------------"
-
-  print colored("Probe selection using PathCost/ProbeLength", 'white')
-  obj.select_probes_path_cost()
-  #obj.select_probes_entropy()
-
-  #for probe in obj.ProbeSet:
-  #  print probe
-
-  #print "Probes Selected=%s" % obj.ProbeSet
-  print colored("Total number of probes = %d" % obj.NumberOfProbesSelected, 'red')
-  f = lambda x: (len(x) - 2) if x[0] == x[len(x)-2] else (len(x)-2)*2 
-  print colored("Total length of all probes = %d" % sum(f(lst) for lst in obj.ProbeSet), 'red')
-  #print obj.ProbeCount
-  print "----------------------------------------------------------------------------------"
+    #for row in obj.compute_dependency_Matrix(startnode):
+    #  print row #+ [row.count(1)]
   
-  obj.initialization()
-  
-  print colored("Probe selection using entropy", 'white')  
-  obj.select_probes_entropy()
-  #for probe in obj.ProbeSet:
-  #  print probe
+    #for probe in obj.AllProbes:
+      #print probe
+    ResultRow.append(float(sum(nx.degree(G).values()))/nodes)
+    ResultRow.append(len(obj.AllProbes))
+    ResultRow.append(obj.Maxdepth)
+    #print colored("Total Probes = %s" % len(obj.AllProbes),'red')
+    #print "----------------------------------------------------------------------------------"
 
+    #print colored("Probe selection using PathCost/ProbeLength", 'white')
+    start = timeit.default_timer()  
+    obj.select_probes_path_cost()
+    stop = timeit.default_timer()
+    ResultRow.append(str(stop - start))
 
-  print colored("Total number of probes = %d" % obj.NumberOfProbesSelected, 'red')
-  #f = lambda x: (len(x) -1) if x[0] == x[len(x)-1] else (len(x)-1)*2 
-  print colored("Total length of all probes = %d" % sum(f(lst) for lst in obj.ProbeSet), 'red')
-  #print obj.ProbeCount
-  print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    #for probe in obj.ProbeSet:
+      #print probe[:-1]
   
+    ResultRow.append(obj.NumberOfProbesSelected)
+    #print colored("Total number of probes = %d" % obj.NumberOfProbesSelected, 'red')
+    f = lambda x: (len(x) - 2) if x[0] == x[len(x)-2] else (len(x)-2)*2 
+    #print colored("Total length of all probes = %d" % sum(f(lst) for lst in obj.ProbeSet), 'red')
+    #print "----------------------------------------------------------------------------------"
+    ResultRow.append(sum(f(lst) for lst in obj.ProbeSet))
   
-  '''
-  plt.figure(figsize=(24,24))
-  pox=nx.spring_layout(G)
-  nx.draw_networkx(G,pox,labels)
-  plt.show()
-  '''
+    obj.initialization()  
+    #print colored("Probe selection using entropy", 'white')
+    start = timeit.default_timer()  
+    obj.select_probes_entropy()
+    stop = timeit.default_timer()
+    ResultRow.append(str(stop - start))
+
+    #for probe in obj.ProbeSet:
+    #  print probe[:-1]
+
+    ResultRow.append(obj.NumberOfProbesSelected)
+    #print colored("Total number of probes = %d" % obj.NumberOfProbesSelected, 'red')  
+    #print colored("Total length of all probes = %d" % sum(f(lst) for lst in obj.ProbeSet), 'red')
+    #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    ResultRow.append(sum(f(lst) for lst in obj.ProbeSet))
+  
+    with open(filename,'a') as fR:
+      for res in ResultRow:
+        fR.write(str(res)+"\t")
+      fR.write("\n")    
+  
+    '''
+    plt.figure(figsize=(24,24))
+    pox=nx.spring_layout(G)
+    nx.draw_networkx(G,pox,labels)
+    plt.show()
+    '''
